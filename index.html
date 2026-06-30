@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GTM差分×指示書照合ツール</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #f5f4f0;
+  --surface: #ffffff;
+  --surface2: #f9f8f5;
+  --border: #e5e3dc;
+  --text: #1a1917;
+  --text2: #6b6860;
+  --text3: #a8a49c;
+  --green: #0f6e56;
+  --green-bg: #e8f5ef;
+  --red: #791f1f;
+  --red-bg: #fce8e8;
+  --yellow: #633806;
+  --yellow-bg: #faeeda;
+  --purple: #3d1f79;
+  --purple-bg: #ede8f5;
+  --accent: #1D9E75;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Noto Sans JP', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.wrap { max-width: 800px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+.header {
+  display: flex; align-items: baseline; gap: 12px;
+  margin-bottom: 2rem; padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.header h1 { font-size: 18px; font-weight: 600; letter-spacing: -.02em; }
+.header p { font-size: 12px; color: var(--text3); }
+
+/* Status banner */
+.banner {
+  display: none; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: 8px; margin-bottom: 1.5rem;
+  background: var(--green-bg); color: var(--green); font-size: 13px; font-weight: 500;
+}
+.banner.show { display: flex; }
+.banner.warn { background: var(--yellow-bg); color: var(--yellow); }
+
+/* Step */
+.step { margin-bottom: 1.5rem; }
+.step-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.step-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--text); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; flex-shrink: 0;
+}
+.step-header p { font-size: 13px; font-weight: 500; }
+
+/* Drop zone */
+.zone {
+  border: 1.5px dashed var(--border); border-radius: 10px;
+  padding: 1.5rem; text-align: center; cursor: pointer;
+  transition: .2s; background: var(--surface2);
+}
+.zone:hover,.zone.drag { background: #e8f4ff; border-color: #60a0d0; }
+.zone.loaded { border-style: solid; border-color: var(--accent); background: var(--green-bg); }
+.zone-icon { font-size: 22px; margin-bottom: 6px; }
+.zone p { font-size: 12px; color: var(--text2); }
+
+/* Input */
+input[type=text] {
+  width: 100%; padding: 9px 12px; font-size: 13px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); color: var(--text);
+  font-family: inherit; transition: border-color .15s;
+}
+input[type=text]:focus { outline: none; border-color: var(--accent); }
+
+select {
+  padding: 7px 10px; font-size: 12px;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface); color: var(--text);
+  font-family: inherit;
+}
+
+/* Buttons */
+.btn {
+  padding: 9px 18px; font-size: 13px; font-weight: 500;
+  cursor: pointer; border-radius: 8px; border: none;
+  background: var(--accent); color: #fff; transition: .15s;
+  font-family: inherit;
+}
+.btn:hover { background: #168a63; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn-outline {
+  background: var(--surface); color: var(--text2);
+  border: 1px solid var(--border);
+}
+.btn-outline:hover { background: var(--surface2); }
+.btn-full { width: 100%; padding: 11px; font-size: 14px; }
+
+/* Card */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 1rem;
+}
+
+/* Col map */
+.col-map { display: none; margin-top: 12px; }
+.col-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.col-grid label { display: block; font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+.col-grid select { width: 100%; }
+
+/* Summary */
+.summary-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 1.5rem; }
+.sum-card { padding: 14px; border-radius: 10px; }
+.sum-card .label { font-size: 11px; font-weight: 500; margin-bottom: 4px; }
+.sum-card .count { font-size: 26px; font-weight: 600; }
+
+/* Tabs */
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
+.tab {
+  padding: 6px 14px; border: 1px solid var(--border);
+  border-radius: 6px; cursor: pointer; font-size: 12px;
+  background: var(--surface); color: var(--text2);
+  font-family: inherit; transition: .15s;
+}
+.tab.active { background: var(--text); color: #fff; border-color: var(--text); }
+
+/* List */
+.sec-title { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; margin: 16px 0 6px; }
+.item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 8px; cursor: pointer;
+  border: 1px solid transparent; transition: .12s;
+  margin-bottom: 2px;
+}
+.item:hover { background: var(--surface2); border-color: var(--border); }
+.item-name { font-size: 13px; flex: 1; }
+.item-meta { font-size: 11px; color: var(--text3); }
+
+/* Badge */
+.badge { padding: 2px 8px; border-radius: 5px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+.b-ok { background: var(--green-bg); color: var(--green); }
+.b-miss { background: var(--red-bg); color: var(--red); }
+.b-extra { background: var(--yellow-bg); color: var(--yellow); }
+.b-dup { background: var(--purple-bg); color: var(--purple); }
+.b-add { background: #e8f5ef; color: #0F6E56; }
+.b-del { background: #fce8e8; color: #791F1F; }
+.b-mod { background: #faeeda; color: #633806; }
+
+/* Modal */
+.modal-bg {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.4); z-index: 100;
+  align-items: flex-start; justify-content: center; padding-top: 3rem;
+}
+.modal-bg.open { display: flex; }
+.modal {
+  background: var(--surface); border-radius: 12px;
+  border: 1px solid var(--border); width: 96%; max-width: 580px;
+  max-height: 78vh; overflow-y: auto; padding: 1.5rem;
+}
+.modal-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+.modal-title { font-size: 15px; font-weight: 600; line-height: 1.4; }
+.modal-close { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--text3); padding: 0; }
+
+/* Code */
+.code {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  padding: 10px; border-radius: 6px; white-space: pre-wrap; word-break: break-all;
+}
+
+/* Diff grid */
+.diff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-bottom: 6px; }
+.diff-label { font-size: 10px; color: var(--text3); padding: 2px 8px; }
+
+/* Error */
+.err { display: none; padding: 10px 14px; background: var(--red-bg); color: var(--red); border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
+.err.show { display: block; }
+
+/* Loading spinner */
+.spin { display: inline-block; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.progress { font-size: 12px; color: var(--text3); margin-top: 6px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1>GTM照合ツール</h1>
+    <p>差分比較・指示書照合・重複チェック</p>
+  </div>
+
+  <!-- GAS連携バナー -->
+  <div class="banner show" id="gas-banner">
+    📋 スプレッドシートからデータを取得中...
+  </div>
+  <div class="banner" id="gas-ok-banner">
+    ✅ スプレッドシートから <span id="gas-row-count"></span> 件のタグデータを読み込みました
+  </div>
+
+  <!-- Upload screen -->
+  <div id="upload-screen">
+
+    <!-- Step 1: Sheet (manual fallback) -->
+    <div class="step" id="step-sheet">
+      <div class="step-header"><span class="step-num">1</span><p>設置指示書（スプレッドシート未連携の場合）</p></div>
+      <div class="card">
+        <p style="font-size:12px;color:var(--text3);margin-bottom:10px">スプレッドシートのボタンから起動した場合はスキップできます</p>
+        <input type="text" id="sheet-url" placeholder="https://docs.google.com/spreadsheets/d/..." oninput="onUrlInput()">
+        <div style="display:flex;gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap">
+          <select id="sheet-name">
+            <option value="タグ新規設定">タグ新規設定</option>
+            <option value="タグ修正">タグ修正</option>
+            <option value="両方">両方（新規＋修正）</option>
+          </select>
+          <button class="btn" id="fetch-btn" onclick="fetchSheet()" disabled>読み込む</button>
+          <span id="sheet-status" style="font-size:12px;color:var(--text2)"></span>
+        </div>
+        <div class="col-map" id="col-map">
+          <div class="col-grid">
+            <div><label>タグ名称の列</label><select id="sel-name"></select></div>
+            <div><label>発火条件の列（任意）</label><select id="sel-cond"><option value="">—</option></select></div>
+            <div><label>タグ記述の列（重複チェック用）</label><select id="sel-code"><option value="">—</option></select></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: GTM JSONs -->
+    <div class="step">
+      <div class="step-header"><span class="step-num">2</span><p>GTM コンテナ JSON（2ファイル）</p></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <p style="font-size:11px;color:var(--text3);margin-bottom:6px">比較元（Default Workspace）</p>
+          <div class="zone" id="zone-a" onclick="document.getElementById('file-a').click()" ondragover="ev(event,'a',true)" ondragleave="ev(event,'a',false)" ondrop="drop(event,'a')">
+            <div class="zone-icon">📂</div>
+            <p id="label-a">ドロップ or クリック</p>
+          </div>
+          <input type="file" id="file-a" accept=".json" style="display:none" onchange="loadJson(event,'a')">
+        </div>
+        <div>
+          <p style="font-size:11px;color:var(--text3);margin-bottom:6px">比較対象（任意のワークスペース）</p>
+          <div class="zone" id="zone-b" onclick="document.getElementById('file-b').click()" ondragover="ev(event,'b',true)" ondragleave="ev(event,'b',false)" ondrop="drop(event,'b')">
+            <div class="zone-icon">📂</div>
+            <p id="label-b">ドロップ or クリック</p>
+          </div>
+          <input type="file" id="file-b" accept=".json" style="display:none" onchange="loadJson(event,'b')">
+        </div>
+      </div>
+    </div>
+
+    <div class="err" id="err-msg"></div>
+    <button class="btn btn-full" id="compare-btn" onclick="runAll()" style="display:none">照合する →</button>
+    <p class="progress" id="progress-txt"></p>
+  </div>
+
+  <!-- Result screen -->
+  <div id="result-screen" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+      <p style="font-size:16px;font-weight:600">照合結果</p>
+      <button class="btn btn-outline" onclick="reset()">↺ やり直す</button>
+    </div>
+    <div class="summary-grid" id="summary-cards"></div>
+    <div class="tabs" id="tab-row"></div>
+    <div id="item-list"></div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-bg" id="modal-bg" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <p class="modal-title" id="modal-title"></p>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+let dataA=null,dataB=null,specRows=null,specHeaders=null,diffResults=null,specResults=null,dupResults=null,currentTab='check',gasApiUrl=null;
+const CATS=[{key:'tag',label:'タグ'},{key:'trigger',label:'トリガー'},{key:'variable',label:'変数'},{key:'builtInVariable',label:'組み込み変数'}];
+
+// ========================================
+// GAS連携：URLパラメータからトークン取得
+// ========================================
+(async function initFromGAS() {
+  const params = new URLSearchParams(location.search);
+  const token = params.get('token');
+  const apiUrl = params.get('api');
+  if (!token || !apiUrl) {
+    document.getElementById('gas-banner').classList.remove('show');
+    return;
+  }
+  // GAS WebアプリのURLをグローバルに保存（重複チェックでも使う）
+  gasApiUrl = apiUrl;
+  try {
+    const res = await fetch(apiUrl + '?token=' + token);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    specHeaders = data.headers;
+    specRows = data.rows;
+    setupColMap(true);
+    document.getElementById('gas-banner').classList.remove('show');
+    document.getElementById('gas-ok-banner').classList.add('show');
+    document.getElementById('gas-row-count').textContent = specRows.length;
+    document.getElementById('step-sheet').style.display = 'none';
+    checkReady();
+  } catch(e) {
+    document.getElementById('gas-banner').className = 'banner show warn';
+    document.getElementById('gas-banner').textContent = '⚠️ スプレッドシートデータの取得に失敗しました: ' + e.message;
+  }
+})();
+
+// ========================================
+// 手動URL入力
+// ========================================
+function onUrlInput() {
+  const v = document.getElementById('sheet-url').value.trim();
+  document.getElementById('fetch-btn').disabled = !v.includes('docs.google.com/spreadsheets');
+}
+
+function fetchSheet() {
+  const url = document.getElementById('sheet-url').value.trim();
+  const sheet = document.getElementById('sheet-name').value;
+  document.getElementById('sheet-status').textContent = '読み込み中...';
+  document.getElementById('fetch-btn').disabled = true;
+  sendPrompt(`以下のGoogleスプレッドシートの「${sheet}」シートのタグ情報を読み込んでください。\nURL: ${url}\n\n必ず以下のJSON形式のみで返してください（前後の説明文・マークダウン不要）:\n{"headers":["列名1","列名2"],"rows":[["値","値"],["値","値"]]}\n\nヘッダー行は「*媒体名」または「媒体名」を含む行です。両方の場合はタグ新規設定とタグ修正を結合してください。`);
+}
+
+window._sheetCallback = function(jsonStr) {
+  try {
+    const clean = jsonStr.replace(/```json|```/g,'').trim();
+    const data = JSON.parse(clean);
+    specHeaders = data.headers; specRows = data.rows;
+    setupColMap(true);
+    document.getElementById('sheet-status').textContent = '✅ ' + specRows.length + '件';
+    document.getElementById('fetch-btn').disabled = false;
+    checkReady();
+  } catch(e) {
+    document.getElementById('sheet-status').textContent = '❌ 解析失敗';
+    document.getElementById('fetch-btn').disabled = false;
+  }
+};
+
+function setupColMap(autoSelect) {
+  const nm=document.getElementById('sel-name'),cd=document.getElementById('sel-cond'),co=document.getElementById('sel-code');
+  nm.innerHTML='';cd.innerHTML='<option value="">—</option>';co.innerHTML='<option value="">—</option>';
+  specHeaders.forEach((h,i)=>{
+    nm.innerHTML+=`<option value="${i}"${autoSelect&&h.includes('タグ名')?' selected':''}>${esc(h)}</option>`;
+    cd.innerHTML+=`<option value="${i}"${autoSelect&&h.includes('発火')?' selected':''}>${esc(h)}</option>`;
+    co.innerHTML+=`<option value="${i}"${autoSelect&&h.includes('タグ記述')?' selected':''}>${esc(h)}</option>`;
+  });
+  document.getElementById('col-map').style.display='block';
+}
+
+// ========================================
+// JSON ドロップ
+// ========================================
+function ev(e,s,on){e.preventDefault();document.getElementById('zone-'+s).classList.toggle('drag',on);}
+function drop(e,s){e.preventDefault();ev(e,s,false);readFile(e.dataTransfer.files[0],s);}
+function loadJson(e,s){readFile(e.target.files[0],s);}
+
+function readFile(file,s){
+  if(!file)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const j=JSON.parse(r.result);
+      if(s==='a')dataA=j;else dataB=j;
+      document.getElementById('zone-'+s).classList.add('loaded');
+      document.getElementById('label-'+s).textContent='✅ '+file.name;
+      showErr('');checkReady();
+    }catch(e){showErr('JSONの解析に失敗: '+file.name);}
+  };
+  r.readAsText(file);
+}
+
+function checkReady(){
+  if(dataA&&dataB&&specRows)document.getElementById('compare-btn').style.display='block';
+}
+
+// ========================================
+// GTM diff
+// ========================================
+function getItems(data,cat){return data?.containerVersion?.[cat]||data?.[cat]||[];}
+
+function compare(a,b,cat){
+  const byn=arr=>{const m={};arr.forEach(x=>m[x.name]=x);return m;};
+  const mA=byn(getItems(a,cat)),mB=byn(getItems(b,cat));
+  const all=new Set([...Object.keys(mA),...Object.keys(mB)]);
+  const added=[],deleted=[],modified=[],unchanged=[];
+  all.forEach(n=>{
+    if(!mA[n])added.push({name:n,newVal:mB[n]});
+    else if(!mB[n])deleted.push({name:n,oldVal:mA[n]});
+    else{const d=getDiff(mA[n],mB[n]);if(d.length)modified.push({name:n,oldVal:mA[n],newVal:mB[n],diff:d});else unchanged.push({name:n});}
+  });
+  return{added,deleted,modified,unchanged};
+}
+
+function getDiff(a,b){
+  const all=new Set([...Object.keys(a),...Object.keys(b)]);
+  const d=[];all.forEach(k=>{if(JSON.stringify(a[k])!==JSON.stringify(b[k]))d.push({key:k,old:a[k],new:b[k]});});
+  return d;
+}
+
+// ========================================
+// Claude APIで重複チェック
+// ========================================
+// APIキーはGAS側で管理。ブラウザからはGAS Webアプリ経由で呼び出す
+async function extractTagKeys(tagHtml){
+  if(!tagHtml?.trim())return null;
+  if(!gasApiUrl){
+    console.warn('GAS API URLが未設定のため重複チェックをスキップ');
+    return null;
+  }
+  try{
+    const url=gasApiUrl+'&action=dupcheck&html='+encodeURIComponent(tagHtml.substring(0,2000));
+    const res=await fetch(url);
+    const data=await res.json();
+    if(data.error){console.warn('重複チェックエラー:',data.error);return null;}
+    return data.result||null;
+  }catch(e){
+    console.warn('extractTagKeys失敗:',e);
+    return null;
+  }
+}
+
+// ========================================
+// メイン処理
+// ========================================
+async function runAll(){
+  const btn=document.getElementById('compare-btn');
+  const prog=document.getElementById('progress-txt');
+  btn.disabled=true;btn.textContent='⏳ 処理中...';
+
+  // 列設定
+  const nameCol=parseInt(document.getElementById('sel-name').value);
+  const condColRaw=document.getElementById('sel-cond').value;
+  const codeColRaw=document.getElementById('sel-code').value;
+  const condCol=condColRaw!==''?parseInt(condColRaw):null;
+  const codeCol=codeColRaw!==''?parseInt(codeColRaw):null;
+
+  // 指示書マップ
+  const specMap={};
+  specRows.forEach(r=>{
+    const n=(r[nameCol]||'').trim();
+    if(n)specMap[n]={name:n,condition:condCol!==null?(r[condCol]||''):'',code:codeCol!==null?(r[codeCol]||''):''};
+  });
+
+  // GTM差分
+  diffResults={};
+  CATS.forEach(c=>diffResults[c.key]=compare(dataA,dataB,c.key));
+  const allDiffNames=new Set();
+  CATS.forEach(c=>{const r=diffResults[c.key];[...r.added,...r.deleted,...r.modified].forEach(x=>allDiffNames.add(x.name));});
+
+  // 照合
+  const ok=[],missing=[],extra=[];
+  Object.keys(specMap).forEach(n=>{allDiffNames.has(n)?ok.push({name:n,spec:specMap[n]}):missing.push({name:n,spec:specMap[n]});});
+  allDiffNames.forEach(n=>{if(!specMap[n])extra.push({name:n});});
+  specResults={ok,missing,extra};
+
+  // 重複チェック
+  dupResults=[];
+  const existingTags=getItems(dataA,'tag');
+  const addedTags=diffResults['tag'].added;
+
+  if(addedTags.length>0&&existingTags.length>0){
+    for(let i=0;i<addedTags.length;i++){
+      const t=addedTags[i];
+      prog.textContent=`重複チェック中... (${i+1}/${addedTags.length})`;
+      const spec=specMap[t.name];
+      const codeStr=spec?.code||JSON.stringify(t.newVal?.parameter||[]);
+      const keys=await extractTagKeys(codeStr);
+      if(!keys?.keys||!Object.keys(keys.keys).length)continue;
+      const dups=[];
+      for(const et of existingTags){
+        if(et.name===t.name)continue;
+        const etStr=JSON.stringify(et.parameter||[]);
+        const matched=Object.entries(keys.keys).filter(([k,v])=>v&&etStr.includes(String(v))).map(([k,v])=>({key:k,value:v}));
+        if(matched.length)dups.push({existingName:et.name,matchedKeys:matched});
+      }
+      if(dups.length)dupResults.push({addedName:t.name,media:keys.media,tag_type:keys.tag_type||'',keys:keys.keys,duplicates:dups});
+    }
+  }
+
+  prog.textContent='';
+  btn.disabled=false;btn.textContent='照合する →';
+  document.getElementById('upload-screen').style.display='none';
+  document.getElementById('result-screen').style.display='block';
+  currentTab='check';
+  renderSummary();renderTabs();renderList();
+}
+
+// ========================================
+// 表示
+// ========================================
+function renderSummary(){
+  const {ok,missing,extra}=specResults;
+  document.getElementById('summary-cards').innerHTML=`
+    <div class="sum-card" style="background:var(--red-bg)"><div class="label" style="color:var(--red)">実装漏れ</div><div class="count" style="color:var(--red)">${missing.length}</div></div>
+    <div class="sum-card" style="background:var(--yellow-bg)"><div class="label" style="color:var(--yellow)">想定外の変更</div><div class="count" style="color:var(--yellow)">${extra.length}</div></div>
+    <div class="sum-card" style="background:var(--purple-bg)"><div class="label" style="color:var(--purple)">重複疑い</div><div class="count" style="color:var(--purple)">${dupResults.length}</div></div>
+    <div class="sum-card" style="background:var(--green-bg)"><div class="label" style="color:var(--green)">照合OK</div><div class="count" style="color:var(--green)">${ok.length}</div></div>`;
+}
+
+function renderTabs(){
+  const tabs=[
+    {key:'check',label:'📋 指示書照合'},
+    {key:'dup',label:`🔁 重複チェック (${dupResults.length})`},
+    ...CATS.map(c=>{const r=diffResults[c.key];return{key:c.key,label:`${c.label} (${r.added.length+r.deleted.length+r.modified.length})`};})
+  ];
+  document.getElementById('tab-row').innerHTML=tabs.map(t=>`<button class="tab${t.key===currentTab?' active':''}" onclick="switchTab('${t.key}')">${esc(t.label)}</button>`).join('');
+}
+
+function switchTab(k){currentTab=k;renderTabs();renderList();}
+
+function renderList(){
+  const el=document.getElementById('item-list');
+  if(currentTab==='check')renderCheckList(el);
+  else if(currentTab==='dup')renderDupList(el);
+  else renderDiffList(el,currentTab);
+}
+
+function renderCheckList(el){
+  const {ok,missing,extra}=specResults;
+  let html='';
+  if(missing.length){html+=`<p class="sec-title">🔴 実装漏れ (${missing.length})</p>`;missing.forEach((x,i)=>html+=makeRow('b-miss','漏れ',x.name,`showSpec('missing',${i})`,''));}
+  if(extra.length){html+=`<p class="sec-title">🟡 想定外の変更 (${extra.length})</p>`;extra.forEach((x,i)=>html+=makeRow('b-extra','想定外',x.name,`showSpec('extra',${i})`,''));}
+  if(ok.length){html+=`<p class="sec-title">🟢 照合OK (${ok.length})</p>`;ok.forEach((x,i)=>html+=makeRow('b-ok','OK',x.name,`showSpec('ok',${i})`,`詳細 ›`));}
+  el.innerHTML=html||'<p style="text-align:center;padding:2rem;color:var(--text3)">データなし</p>';
+}
+
+function renderDupList(el){
+  if(!dupResults.length){el.innerHTML='<p style="text-align:center;padding:2rem;color:var(--text3)">重複は検出されませんでした ✅</p>';return;}
+  let html=`<p class="sec-title">🔁 重複疑いのタグ (${dupResults.length})</p>`;
+  dupResults.forEach((d,i)=>html+=makeRow('b-dup','重複疑い',d.addedName,`showDup(${i})`,`${esc(d.media)}${d.tag_type?' / '+esc(d.tag_type):''} · ${d.duplicates.length}件と一致 ›`));
+  el.innerHTML=html;
+}
+
+function renderDiffList(el,cat){
+  const r=diffResults[cat];
+  const secs=[{key:'added',cls:'b-add',label:'追加'},{key:'deleted',cls:'b-del',label:'削除'},{key:'modified',cls:'b-mod',label:'変更'},{key:'unchanged',cls:'',label:'変更なし'}];
+  let html='';
+  secs.forEach(s=>{
+    const items=r[s.key];if(!items?.length)return;
+    html+=`<p class="sec-title">${s.label} (${items.length})</p>`;
+    items.forEach((item,i)=>{
+      const can=s.key!=='unchanged';
+      html+=makeRow(s.cls,s.label.charAt(0),item.name,can?`showDiff('${cat}','${s.key}',${i})`:null,s.key==='modified'?`${item.diff.length}件の変更 ›`:'');
+    });
+  });
+  el.innerHTML=html||'<p style="text-align:center;padding:2rem;color:var(--text3)">差分なし</p>';
+}
+
+function makeRow(badgeCls,badgeText,name,onclick,meta){
+  return`<div class="item"${onclick?` onclick="${onclick}"`:''}${!onclick?' style="cursor:default"':''}>
+    ${badgeCls?`<span class="badge ${badgeCls}">${esc(badgeText)}</span>`:''}
+    <span class="item-name">${esc(name)}</span>
+    ${meta?`<span class="item-meta">${meta}</span>`:''}
+  </div>`;
+}
+
+// ========================================
+// モーダル
+// ========================================
+function showSpec(type,idx){
+  const item=specResults[type][idx];
+  let body='';
+  if(type==='missing')body+=`<p style="color:var(--red);font-size:13px;margin-bottom:12px">指示書にあるがGTM差分に含まれていません。実装漏れの可能性があります。</p>`;
+  else if(type==='extra')body+=`<p style="color:var(--yellow);font-size:13px;margin-bottom:12px">GTM差分にあるが指示書に記載がありません。意図しない変更の可能性があります。</p>`;
+  else body+=`<p style="color:var(--green);font-size:13px;margin-bottom:12px">指示書とGTM差分の両方に存在します。</p>`;
+  if(item.spec?.condition)body+=`<p class="sec-title">発火条件（指示書）</p><div class="code" style="background:var(--surface2);color:var(--text2);margin-top:4px">${esc(item.spec.condition)}</div>`;
+  openModal(item.name,body);
+}
+
+function showDup(idx){
+  const d=dupResults[idx];
+  let body=`<p style="color:var(--purple);font-size:13px;margin-bottom:12px">新規追加しようとしているタグのID・ラベルが既存タグと一致しています。意図的な場合は無視してください。</p>`;
+  body+=`<p class="sec-title">媒体 / タグ種別</p><div style="display:flex;gap:6px;margin-top:4px;margin-bottom:12px">`;
+  body+=`<span style="background:var(--purple-bg);color:var(--purple);padding:2px 10px;border-radius:5px;font-size:12px;font-weight:500">${esc(d.media)}</span>`;
+  if(d.tag_type)body+=`<span style="background:var(--surface2);color:var(--text2);padding:2px 10px;border-radius:5px;font-size:12px;border:1px solid var(--border)">${esc(d.tag_type)}</span>`;
+  body+=`</div>`;
+  body+=`<p class="sec-title">検出されたキー（${esc(d.media)}）</p><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;margin-bottom:14px">`;
+  Object.entries(d.keys).forEach(([k,v])=>body+=`<span style="background:var(--purple-bg);color:var(--purple);padding:2px 8px;border-radius:4px;font-size:12px;font-family:'JetBrains Mono',monospace">${esc(k)}: ${esc(String(v))}</span>`);
+  body+=`</div><p class="sec-title">一致した既存タグ</p>`;
+  d.duplicates.forEach(dup=>{
+    body+=`<div style="padding:10px;background:var(--surface2);border-radius:8px;margin-top:6px"><p style="font-size:13px;font-weight:500;margin-bottom:4px">${esc(dup.existingName)}</p>`;
+    dup.matchedKeys.forEach(m=>body+=`<span style="font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace">${esc(m.key)}: ${esc(String(m.value))}</span><br>`);
+    body+=`</div>`;
+  });
+  openModal(d.addedName,body);
+}
+
+function showDiff(cat,type,idx){
+  const item=diffResults[cat][type][idx];
+  let body='';
+  if(type==='modified'){
+    item.diff.forEach(d=>{
+      body+=`<p style="font-size:11px;color:var(--text3);margin:10px 0 4px;font-weight:500">${esc(d.key)}</p>`;
+      body+=`<div class="diff-grid"><div class="diff-label">変更前</div><div class="diff-label">変更後</div></div>`;
+      body+=`<div class="diff-grid"><div class="code" style="background:var(--red-bg);color:var(--red)">${esc(JSON.stringify(d.old,null,2))}</div><div class="code" style="background:var(--green-bg);color:var(--green)">${esc(JSON.stringify(d.new,null,2))}</div></div>`;
+    });
+  } else if(type==='added'){
+    body=`<pre class="code" style="background:var(--green-bg);color:var(--green)">${esc(JSON.stringify(item.newVal,null,2))}</pre>`;
+  } else if(type==='deleted'){
+    body=`<pre class="code" style="background:var(--red-bg);color:var(--red)">${esc(JSON.stringify(item.oldVal,null,2))}</pre>`;
+  }
+  openModal(item.name,body);
+}
+
+function openModal(title,body){
+  document.getElementById('modal-title').textContent=title;
+  document.getElementById('modal-body').innerHTML=body;
+  document.getElementById('modal-bg').classList.add('open');
+}
+function closeModal(e){
+  if(!e||e.target===document.getElementById('modal-bg')||e.currentTarget?.classList.contains('modal-close'))
+    document.getElementById('modal-bg').classList.remove('open');
+}
+
+function reset(){
+  dataA=null;dataB=null;specRows=null;specHeaders=null;diffResults=null;specResults=null;dupResults=null;currentTab='check';
+  document.getElementById('upload-screen').style.display='block';
+  document.getElementById('result-screen').style.display='none';
+  document.getElementById('compare-btn').style.display='none';
+  document.getElementById('col-map').style.display='none';
+  document.getElementById('sheet-url').value='';
+  document.getElementById('sheet-status').textContent='';
+  document.getElementById('fetch-btn').disabled=true;
+  ['a','b'].forEach(s=>{document.getElementById('zone-'+s).classList.remove('loaded','drag');document.getElementById('label-'+s).textContent='ドロップ or クリック';document.getElementById('file-'+s).value='';});
+  showErr('');
+}
+
+function showErr(msg){const el=document.getElementById('err-msg');el.className='err'+(msg?' show':'');el.textContent=msg;}
+function esc(s){if(typeof s!=='string')s=String(s??'');return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+</script>
+</body>
+</html>
